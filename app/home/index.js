@@ -14,7 +14,7 @@ import { debounce } from "lodash";
 import Fmodal from "../../components/Fmodal";
 import { useRouter } from "expo-router";
 
-let page = 1; 
+let page = 1;
 
 export default function HomeScreen() {
     const { top } = useSafeAreaInsets();
@@ -26,7 +26,7 @@ export default function HomeScreen() {
     const [activeCat, setActiveCat] = useState(null);
     const [images, setImages] = useState([]);
     const modalRef = useRef(null);
-  const router=useRouter()
+    const router = useRouter()
     useEffect(() => {
         const fetchImages = async () => {
             try {
@@ -52,32 +52,27 @@ export default function HomeScreen() {
 
         try {
             setSearch(null);
-            let response;
+            let params = {
+                page,
+                safesearch: true,
+                editors_choice: true,
+            };
+
             if (cat) {
-                response = await axios.get(apiUrl, {
-                    params: {
-                        q: cat,
-                        page,
-                        safesearch: true,
-                        editors_choice: true,
-                    },
-                });
-            } else {
-                setSearch(null);
-                response = await axios.get(apiUrl, {
-                    params: {
-                        page,
-                        safesearch: true,
-                        editors_choice: true,
-                    },
-                });
-                SearchInputRef?.current.clear();
+                params.q = cat;
             }
+
+            if (filters) {
+                params = { ...params, ...filters };
+            }
+
+            const response = await axios.get(apiUrl, { params });
             setImages(response.data.hits);
         } catch (error) {
-            console.log("Error fetching images:", error);
+            console.log("Error fetching images for category:", error);
         }
     };
+
 
     const handleSearch = async (text) => {
         setSearch(text);
@@ -85,28 +80,29 @@ export default function HomeScreen() {
         if (text.length > 2) {
             setActiveCat(null);
             try {
-                const response = await axios.get(apiUrl, {
-                    params: {
-                        q: text,
-                        page,
-                        safesearch: true,
-                        editors_choice: true,
-                    }
-                });
+                const params = {
+                    q: text,
+                    page,
+                    safesearch: true,
+                    editors_choice: true,
+                    ...filters,
+                };
+
+                const response = await axios.get(apiUrl, { params });
                 setImages(response.data.hits);
             } catch (error) {
-                console.log("Error fetching images:", error);
+                console.log("Error searching images:", error);
             }
         } else {
             setActiveCat(null);
             try {
-                const response = await axios.get(apiUrl, {
-                    params: {
-                        page,
-                        safesearch: true,
-                        editors_choice: true
-                    }
-                });
+                const params = {
+                    page,
+                    safesearch: true,
+                    editors_choice: true,
+                    ...filters,
+                };
+                const response = await axios.get(apiUrl, { params });
                 setImages(response.data.hits);
                 SearchInputRef?.current.clear();
             } catch (error) {
@@ -115,36 +111,37 @@ export default function HomeScreen() {
         }
     };
 
+
     const handleTextDebounce = useCallback(debounce(handleSearch, 400), []);
 
     const handleOpenPress = () => modalRef.current.present();
     const closeFilterModal = () => modalRef.current.close()
 
     const applyFilters = async () => {
-        if (filters) {
+        if (filters || activeCat) {
             setImages([]);
             try {
                 const params = {
                     page,
                     safesearch: true,
                     editors_choice: true,
-                    ...filters
+                    ...filters,
                 };
 
                 if (activeCat) {
-                    params.q = { ...params.q, activeCat };
+                    params.q = activeCat;
                 }
                 if (search) {
-                    params.q = { ...params.q, search };
+                    params.q = search;
                 }
 
                 const response = await axios.get(apiUrl, { params });
                 setImages(response.data.hits);
             } catch (error) {
-                console.log("Error fetching images:", error);
+                console.log("Error fetching images with filters:", error);
             }
         } else {
-            setActiveCat(null)
+            setActiveCat(null);
             try {
                 const response = await axios.get(apiUrl, {
                     params: {
@@ -161,6 +158,7 @@ export default function HomeScreen() {
         }
         closeFilterModal();
     };
+
 
 
     const resetFilters = async () => {
@@ -227,9 +225,9 @@ export default function HomeScreen() {
             const contentHeight = event.nativeEvent.contentSize.height;
             const scrollViewHeight = event.nativeEvent.layoutMeasurement.height;
             const scrollOffset = event.nativeEvent.contentOffset.y;
-    
+
             const bottomPosition = contentHeight - scrollViewHeight;
-    
+
             if (scrollOffset >= bottomPosition - 1) {
                 ++page;
                 const params = {
@@ -238,10 +236,10 @@ export default function HomeScreen() {
                     safesearch: true,
                     editors_choice: true,
                 };
-                if(activeCat) params.Category=activeCat;
-                if(search) params.q=search;
-                
-                
+                if (activeCat) params.Category = activeCat;
+                if (search) params.q = search;
+
+
                 const response = await axios.get(apiUrl, { params });
                 setImages(prevImages => prevImages.concat(response.data.hits));
 
@@ -250,12 +248,12 @@ export default function HomeScreen() {
             console.error("Error occurred while handling scroll:", error);
         }
     };
-    
+
 
     const handleScrollUp = () => {
         scrollRef?.current.scrollTo({
-            y:0,
-            animated:true
+            y: 0,
+            animated: true
         });
     };
 
@@ -300,13 +298,13 @@ export default function HomeScreen() {
                                 return (
                                     <View key={key} style={styles.filterItem}>
                                         {
-                                            key=="colors" ? (
+                                            key == "colors" ? (
                                                 <View style={{
-                                                    height:25,
-                                                    width:30,
-                                                    borderRadius:7,
-                                                    backgroundColor:filters[key]
-                                                }}/>
+                                                    height: 25,
+                                                    width: 30,
+                                                    borderRadius: 7,
+                                                    backgroundColor: filters[key]
+                                                }} />
                                             ) : (
                                                 <Text style={styles.filterItemText}>{filters[key]}</Text>
                                             )
@@ -321,8 +319,8 @@ export default function HomeScreen() {
                     </View>
                 )}
                 <View>{images.length > 0 && <ImagesGrid route={router} images={images} />}</View>
-                <View style={{marginBottom:70,marginTop:images.length>0? 10:70}}>
-                    <ActivityIndicator size={"large"}/>
+                <View style={{ marginBottom: 70, marginTop: images.length > 0 ? 10 : 70 }}>
+                    <ActivityIndicator size={"large"} />
                 </View>
             </ScrollView>
             <Fmodal modalRef={modalRef} filterss={filters} setFilters={setFilters} onClose={closeFilterModal} onApply={applyFilters} onReset={resetFilters} />
